@@ -268,8 +268,27 @@ def can_user_login(username):
     users = load_users()
     if username not in users:
         return False
-    max_s = users[username].get('max_sessions', 999) if isinstance(users[username], dict) else 999
+    ud = users[username] if isinstance(users[username], dict) else {}
+    if ud.get('banned', False):
+        return False
+    max_s = ud.get('max_sessions', 999)
     return sessions.get(username, 0) < max_s
+
+def get_login_error(username, password_ok):
+    """Returns a specific error message for login failures."""
+    if not password_ok:
+        return '❌ بيانات الدخول غير صحيحة'
+    users = load_users()
+    if username not in users:
+        return '❌ بيانات الدخول غير صحيحة'
+    ud = users[username] if isinstance(users[username], dict) else {}
+    if ud.get('banned', False):
+        return '🚫 تم حظر حسابك من قبل المدير. تواصل مع الإدارة.'
+    sessions = load_user_sessions()
+    max_s = ud.get('max_sessions', 999)
+    if sessions.get(username, 0) >= max_s:
+        return '⚠️ لقد تجاوزت الحد الأقصى للأجهزة المسموح بها'
+    return '❌ بيانات الدخول غير صحيحة'
 
 def register_session(username):
     sessions = load_user_sessions()
@@ -914,6 +933,49 @@ html,body{background:#1f2933;color:#d6dde3;min-height:100vh}
 }
 .port-note{color:#7a8c98;font-size:12px;margin-top:4px}
 
+/* ============== WELCOME OVERLAY ============== */
+.welcome-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.7);
+  display:flex;align-items:center;justify-content:center;z-index:3000;
+  animation:fadein .35s;
+}
+.welcome-box{
+  background:linear-gradient(135deg,#1a2c3a 0%,#2b3a43 100%);
+  border:1px solid rgba(41,199,211,.35);
+  border-radius:14px;padding:36px 32px;text-align:center;
+  width:min(420px,92vw);
+  box-shadow:0 24px 60px rgba(0,0,0,.6);position:relative;
+}
+.welcome-box .wb-icon{font-size:52px;margin-bottom:12px}
+.welcome-box h2{color:#fff;font-size:22px;font-weight:700;margin-bottom:6px}
+.welcome-box .wb-badge{
+  display:inline-block;padding:3px 14px;border-radius:20px;font-size:12px;font-weight:700;
+  margin-bottom:18px;
+}
+.wb-badge.vip{background:rgba(245,197,24,.15);color:#f5c518;border:1px solid rgba(245,197,24,.4)}
+.wb-badge.normal{background:rgba(41,199,211,.1);color:#29c7d3;border:1px solid rgba(41,199,211,.3)}
+.wb-badge.master{background:rgba(229,57,53,.1);color:#ff8a8a;border:1px solid rgba(229,57,53,.4)}
+.welcome-box .wb-info{
+  background:#1f2933;border-radius:8px;padding:14px;margin-bottom:18px;
+  text-align:right;font-size:13px;line-height:2;color:#c9d6de;
+}
+.welcome-box .wb-info span{color:#29c7d3;font-weight:600}
+.welcome-box .wb-close{
+  background:#2f6fed;color:#fff;border:0;border-radius:6px;
+  padding:11px 32px;font-size:14px;font-weight:700;cursor:pointer;width:100%;
+}
+.welcome-box .wb-close:hover{background:#1d5cd8}
+
+/* ============== PROFILE MODAL ============== */
+.prof-field{display:flex;justify-content:space-between;align-items:center;
+  padding:10px 0;border-bottom:1px solid #2a3640}
+.prof-field:last-child{border-bottom:0}
+.prof-field .pf-lbl{color:#7a8c98;font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+.prof-field .pf-val{color:#fff;font-size:14px;font-weight:500}
+
+/* ============== USER EDIT MODAL ============== */
+.edit-user-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+
 /* ============== USER LIST ============== */
 .user-row{
   display:flex;justify-content:space-between;align-items:center;
@@ -977,8 +1039,8 @@ html,body{background:#1f2933;color:#d6dde3;min-height:100vh}
       <span class="clock-date" id="clock-date">----/--/--</span>
     </div>
     <button class="ic" onclick="loadSearch()" title="Search">🔍</button>
-    <button class="ic" title="Servers">🗂</button>
-    <span class="avatar" title="''' + html.escape(MASTER_USERNAME) + r'''"></span>
+    <button class="ic" onclick="showProfile()" title="Profile" style="font-size:20px">👤</button>
+    <span class="avatar" id="topbar-avatar" onclick="showProfile()" title="''' + html.escape(MASTER_USERNAME if is_master else current_username) + r'''" style="cursor:pointer"></span>
     <button class="ic" onclick="location.href='/logout'" title="Logout">↪</button>
   </div>
 </div>
@@ -1081,13 +1143,17 @@ html,body{background:#1f2933;color:#d6dde3;min-height:100vh}
 <!-- ===== USERS TAB (master only) ===== -->
 <div class="tab-content" id="tab-users">
   <div class="section-card">
-    <div class="section-head">ADD USER</div>
+    <div class="section-head">➕ إضافة مستخدم جديد</div>
     <div class="section-body">
-      <div class="field-block"><label>Username</label><input id="u-name" placeholder="username"></div>
-      <div class="field-block"><label>Password</label><input id="u-pass" type="password" placeholder="password"></div>
-      <div class="field-block"><label>Max Sessions (Devices)</label><input id="u-max" type="number" value="3"></div>
-      <div class="field-block"><label>Expiry Date &amp; Time</label><input id="u-expiry" type="datetime-local"></div>
-      <div class="row-end"><button class="btn-action" onclick="addUser()">Add User</button></div>
+      <div class="field-block"><label>اسم المستخدم</label><input id="u-name" placeholder="username"></div>
+      <div class="field-block"><label>كلمة المرور</label><input id="u-pass" type="password" placeholder="password"></div>
+      <div class="field-block"><label>أقصى عدد أجهزة</label><input id="u-max" type="number" value="3"></div>
+      <div class="field-block"><label>تاريخ الانتهاء</label><input id="u-expiry" type="datetime-local"></div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+        <input type="checkbox" id="u-vip" style="width:16px;height:16px">
+        <label for="u-vip" style="color:#f5c518;font-weight:600;font-size:13px">⭐ عضو VIP</label>
+      </div>
+      <div class="row-end"><button class="btn-action" onclick="addUser()">➕ إضافة مستخدم</button></div>
     </div>
   </div>
   <div id="user-list"></div>
@@ -1299,6 +1365,71 @@ html,body{background:#1f2933;color:#d6dde3;min-height:100vh}
   </div>
 </div>
 
+<!-- ===== WELCOME OVERLAY ===== -->
+<div class="welcome-overlay" id="welcome-overlay" style="display:none" onclick="if(event.target===this)closeWelcome()">
+  <div class="welcome-box" id="welcome-box">
+    <div class="wb-icon">👋</div>
+    <h2>مرحباً!</h2>
+    <div class="wb-badge-wrap" style="margin-bottom:18px"></div>
+    <div class="wb-info"></div>
+    <button class="wb-close" onclick="closeWelcome()">✓ تسجيل الدخول</button>
+  </div>
+</div>
+
+<!-- ===== PROFILE MODAL ===== -->
+<div class="modal" id="profile-modal" onclick="if(event.target===this)closeModal('profile-modal')">
+  <div class="modal-box" style="max-width:440px">
+    <div class="modal-head">
+      <h3>👤 الملف الشخصي</h3>
+      <button class="close" onclick="closeModal('profile-modal')">×</button>
+    </div>
+    <div class="modal-body" id="prof-content" style="padding:0 4px"></div>
+    <div class="modal-foot">
+      <button class="btn-action gray" onclick="closeModal('profile-modal')">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== EDIT USER MODAL (master only) ===== -->
+<div class="modal" id="edit-user-modal" onclick="if(event.target===this)closeModal('edit-user-modal')">
+  <div class="modal-box" style="max-width:460px">
+    <div class="modal-head">
+      <h3>✏️ تعديل مستخدم</h3>
+      <button class="close" onclick="closeModal('edit-user-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="field-block">
+        <label>اسم المستخدم الحالي</label>
+        <input id="eu-username" readonly style="opacity:.6">
+      </div>
+      <div class="field-block">
+        <label>اسم المستخدم الجديد (اختياري)</label>
+        <input id="eu-new-username" placeholder="اتركه فارغاً إذا لم تريد التغيير">
+      </div>
+      <div class="field-block">
+        <label>أقصى عدد أجهزة</label>
+        <input id="eu-max" type="number" min="1" max="999">
+      </div>
+      <div class="field-block">
+        <label>تاريخ الانتهاء</label>
+        <input id="eu-expiry" type="datetime-local">
+      </div>
+      <div style="display:flex;gap:20px;margin-bottom:14px;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:#f5c518;font-weight:600;font-size:13px">
+          <input type="checkbox" id="eu-vip" style="width:16px;height:16px"> ⭐ عضو VIP
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:#ff8a8a;font-weight:600;font-size:13px">
+          <input type="checkbox" id="eu-banned" style="width:16px;height:16px"> 🚫 محظور
+        </label>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-action gray" onclick="closeModal('edit-user-modal')">إلغاء</button>
+      <button class="btn-action" onclick="saveEditUser()">💾 حفظ التعديلات</button>
+    </div>
+  </div>
+</div>
+
 <!-- run modal removed - output goes to main console -->
 
 <script>
@@ -1457,7 +1588,7 @@ async function runCmd(){
 async function loadFiles(){
   try{
     const running = await fetch('/api/file/running').then(r=>r.json()).catch(()=>({running:[]}));
-    const runningNames = (running.running||[]).map(x=>x.filename);
+    const runningList = running.running||[];
     const r=await fetch('/api/files?path='+encodeURIComponent(currentPath));
     const d=await r.json();
     const list=document.getElementById('file-list');
@@ -1471,7 +1602,8 @@ async function loadFiles(){
       const safe = f.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
       const fp = currentPath+'/'+f.name;
       const isMain = mainFile === fp;
-      const isRunning = !f.is_dir && runningNames.includes(f.name);
+      const runEntry = runningList.find(x=>x.filename===f.name);
+      const isRunning = !f.is_dir && !!runEntry;
       const badges = (isMain?'<span class="badge-main-f">⭐ رئيسي</span>':'')+
                      (isRunning?'<span class="badge-run">🟢 يعمل</span>':'');
       let actions = '';
@@ -1479,8 +1611,9 @@ async function loadFiles(){
         actions = `<button class="btn-fac f-rename" onclick="event.stopPropagation();renameFile('${safe}')">✏️ تسمية</button>
                    <button class="btn-fac f-del" onclick="event.stopPropagation();deleteFile('${safe}',true)">🗑 حذف</button>`;
       } else {
+        const runPid = runEntry ? runEntry.process_id : null;
         const stopBtn = isRunning
-          ? `<button class="btn-fac f-stop" onclick="event.stopPropagation();stopCurrentRun()">■ إيقاف</button>`
+          ? `<button class="btn-fac f-stop" onclick="event.stopPropagation();stopFileByPid(${runPid})">■ إيقاف</button>`
           : `<button class="btn-fac f-run" onclick="event.stopPropagation();runFile('${safe}')">▶ تشغيل</button>`;
         actions = `
           <button class="btn-fac f-edit" onclick="event.stopPropagation();openEdit('${safe}')">📝 تعديل</button>
@@ -1635,11 +1768,18 @@ async function pollRunOutput(){
 }
 async function stopCurrentRun(){
   if(!currentRunPid) return;
-  await fetch('/api/file/stop',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({process_id:currentRunPid})});
+  await stopFileByPid(currentRunPid);
+}
+async function stopFileByPid(pid){
+  if(!pid) return;
+  await fetch('/api/file/stop',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({process_id:pid})});
   appendConsole('\n[■] تم الإيقاف');
-  currentRunPid=null; runningFilename=null;
-  if(runPoll){ clearInterval(runPoll); runPoll=null; }
-  updateConsoleStatus(); loadFiles();
+  if(pid === currentRunPid){
+    currentRunPid=null; runningFilename=null;
+    if(runPoll){ clearInterval(runPoll); runPoll=null; }
+    updateConsoleStatus();
+  }
+  loadFiles();
   toast('تم إيقاف العملية');
 }
 async function sendRunInput(){
@@ -1755,15 +1895,21 @@ async function loadUsers(){
   const r=await fetch('/api/users/list'); const d=await r.json();
   const list=document.getElementById('user-list'); list.innerHTML='';
   (d.users||[]).forEach(u=>{
-    const expTxt = u.expiry ? '⏰ '+u.expiry.replace('T',' ') : '∞ No expiry';
+    const expTxt = u.expiry ? '⏰ '+u.expiry.replace('T',' ') : '∞ بلا انتهاء';
     const isExpired = u.expiry && new Date(u.expiry) < new Date();
+    const vipBadge = u.vip ? '<span style="background:rgba(245,197,24,.15);color:#f5c518;border:1px solid rgba(245,197,24,.4);padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700">⭐ VIP</span>' : '';
+    const banBadge = u.banned ? '<span style="background:rgba(229,57,53,.15);color:#ff8a8a;border:1px solid rgba(229,57,53,.4);padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700">🚫 محظور</span>' : '';
+    const uSafe = escapeHtml(u.username);
     list.innerHTML += `
-      <div class="user-row">
-        <div>
-          <div class="uname">${escapeHtml(u.username)}</div>
-          <div class="meta">Sessions: ${u.active_sessions||0}/${u.max_sessions||999} &nbsp;|&nbsp; <span style="color:${isExpired?'#e53935':'#65c466'}">${expTxt}</span></div>
+      <div class="user-row" style="${u.banned?'opacity:.7':''}">
+        <div style="flex:1">
+          <div class="uname" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">${uSafe} ${vipBadge} ${banBadge}</div>
+          <div class="meta">أجهزة: ${u.active_sessions||0}/${u.max_sessions||999} &nbsp;|&nbsp; <span style="color:${isExpired?'#e53935':'#65c466'}">${expTxt}</span></div>
         </div>
-        <button class="btn-action danger" onclick="delUser('${escapeHtml(u.username)}')">Delete</button>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn-action gray" style="padding:8px 14px" onclick="openEditUser(${JSON.stringify(u).replace(/"/g,'&quot;')})">✏️ تعديل</button>
+          <button class="btn-action danger" style="padding:8px 14px" onclick="delUser('${uSafe}')">🗑 حذف</button>
+        </div>
       </div>`;
   });
 }
@@ -1772,25 +1918,132 @@ async function addUser(){
   const p=document.getElementById('u-pass').value;
   const m=document.getElementById('u-max').value||3;
   const ex=document.getElementById('u-expiry').value;
-  if(!u||!p){ toast('Fill all fields',true); return; }
-  const body={username:u,password:p,max_sessions:m};
+  const vip=document.getElementById('u-vip').checked;
+  if(!u||!p){ toast('أدخل اسم المستخدم وكلمة المرور',true); return; }
+  const body={username:u,password:p,max_sessions:m,vip:vip};
   if(ex) body.expiry=ex;
   const r=await fetch('/api/users/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
   const d=await r.json();
   if(d.success){
-    toast('User added');
+    toast('✓ تم إضافة المستخدم');
     document.getElementById('u-name').value='';
     document.getElementById('u-pass').value='';
     document.getElementById('u-max').value='3';
     document.getElementById('u-expiry').value='';
+    document.getElementById('u-vip').checked=false;
     loadUsers();
-  }else toast('Failed',true);
+  }else toast('فشل الإضافة',true);
 }
 async function delUser(u){
-  if(!confirm('Delete user '+u+'?')) return;
+  if(!confirm('حذف المستخدم '+u+'؟')) return;
   await fetch('/api/users/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u})});
-  toast('Deleted'); loadUsers();
+  toast('✓ تم الحذف'); loadUsers();
 }
+let _editingUser = null;
+function openEditUser(u){
+  _editingUser = u;
+  document.getElementById('eu-username').value = u.username;
+  document.getElementById('eu-new-username').value = '';
+  document.getElementById('eu-max').value = u.max_sessions||3;
+  document.getElementById('eu-expiry').value = u.expiry ? u.expiry.slice(0,16) : '';
+  document.getElementById('eu-vip').checked = !!u.vip;
+  document.getElementById('eu-banned').checked = !!u.banned;
+  document.getElementById('edit-user-modal').classList.add('show');
+}
+async function saveEditUser(){
+  if(!_editingUser) return;
+  const newU = document.getElementById('eu-new-username').value.trim();
+  const body = {
+    username: _editingUser.username,
+    max_sessions: parseInt(document.getElementById('eu-max').value)||3,
+    expiry: document.getElementById('eu-expiry').value||null,
+    vip: document.getElementById('eu-vip').checked,
+    banned: document.getElementById('eu-banned').checked,
+  };
+  if(newU && newU !== _editingUser.username) body.new_username = newU;
+  const r=await fetch('/api/users/update',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const d=await r.json();
+  if(d.success){ toast('✓ تم التحديث'); closeModal('edit-user-modal'); loadUsers(); }
+  else toast('فشل: '+(d.error||''),true);
+}
+
+/* =========== PROFILE & WELCOME =========== */
+let _profileData = null;
+async function showProfile(){
+  const r=await fetch('/api/profile'); const d=await r.json();
+  _profileData = d;
+  const modal = document.getElementById('profile-modal');
+  const av = document.getElementById('topbar-avatar');
+  const isMaster = d.is_master;
+  const vip = d.vip;
+  let badgeHtml = isMaster
+    ? '<span class="wb-badge master">👑 Master</span>'
+    : vip ? '<span class="wb-badge vip">⭐ VIP</span>'
+    : '<span class="wb-badge normal">🔵 مستخدم عادي</span>';
+  const fmtDate = s => s ? s.replace('T',' ').slice(0,16) : '—';
+  const expiry = d.expiry ? fmtDate(d.expiry) : (isMaster ? '∞ مدى الحياة' : '∞ بلا انتهاء');
+  const created = fmtDate(d.created);
+  const maskedPass = '••••••••';
+  document.getElementById('prof-content').innerHTML = `
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:54px;margin-bottom:8px">${isMaster?'👑':vip?'⭐':'👤'}</div>
+      <div style="font-size:20px;font-weight:700;color:#fff;margin-bottom:6px">${escapeHtml(d.username)}</div>
+      ${badgeHtml}
+    </div>
+    <div class="prof-field"><span class="pf-lbl">اسم المستخدم</span><span class="pf-val">${escapeHtml(d.username)}</span></div>
+    <div class="prof-field"><span class="pf-lbl">كلمة المرور</span><span class="pf-val" style="letter-spacing:3px">${maskedPass}</span></div>
+    ${!isMaster?`<div class="prof-field"><span class="pf-lbl">تاريخ الإنشاء</span><span class="pf-val">${created}</span></div>`:''}
+    ${!isMaster?`<div class="prof-field"><span class="pf-lbl">تاريخ الانتهاء</span><span class="pf-val" style="color:${d.expiry && new Date(d.expiry)<new Date()?'#e53935':'#65c466'}">${expiry}</span></div>`:''}
+    <div class="prof-field"><span class="pf-lbl">حجم الملفات</span><span class="pf-val">${(d.disk_usage_gb||0).toFixed(3)} GB</span></div>
+    ${!isMaster?`<div class="prof-field"><span class="pf-lbl">عدد الأجهزة المسموحة</span><span class="pf-val">${d.max_sessions||999}</span></div>`:''}
+  `;
+  modal.classList.add('show');
+  if(av) av.textContent = (d.username||'').slice(0,2).toUpperCase();
+}
+function showWelcome(d){
+  const isMaster = d.is_master;
+  const vip = d.vip;
+  let badgeHtml = isMaster
+    ? '<span class="wb-badge master">👑 Master</span>'
+    : vip ? '<span class="wb-badge vip">⭐ VIP</span>'
+    : '<span class="wb-badge normal">🔵 مستخدم عادي</span>';
+  const fmtDate = s => s ? s.replace('T',' ').slice(0,16) : '—';
+  const expiry = d.expiry ? fmtDate(d.expiry) : (isMaster ? '∞ مدى الحياة' : '∞ بلا انتهاء');
+  const created = fmtDate(d.created);
+  const box = document.getElementById('welcome-box');
+  box.querySelector('.wb-icon').textContent = isMaster?'👑':vip?'⭐':'👋';
+  box.querySelector('h2').textContent = 'مرحباً، '+d.username+'!';
+  box.querySelector('.wb-badge-wrap').innerHTML = badgeHtml;
+  box.querySelector('.wb-info').innerHTML =
+    (!isMaster ? `<div>📅 تاريخ الإنشاء: <span>${created}</span></div>` : '') +
+    (!isMaster ? `<div>⏰ تاريخ الانتهاء: <span style="color:${d.expiry && new Date(d.expiry)<new Date()?'#e53935':'#65c466'}">${expiry}</span></div>` : '') +
+    `<div>💾 استخدام المساحة: <span>${(d.disk_usage_gb||0).toFixed(3)} GB</span></div>`;
+  document.getElementById('welcome-overlay').style.display='flex';
+}
+function closeWelcome(){
+  document.getElementById('welcome-overlay').style.display='none';
+}
+async function initPage(){
+  const r=await fetch('/api/profile').catch(()=>null);
+  if(!r||!r.ok) return;
+  const d=await r.json();
+  const av=document.getElementById('topbar-avatar');
+  if(av) av.textContent=(d.username||'').slice(0,2).toUpperCase();
+  if(d.show_welcome) showWelcome(d);
+  const rn=await fetch('/api/file/running').then(x=>x.json()).catch(()=>({running:[]}));
+  const running=(rn.running||[]);
+  if(running.length>0){
+    const first=running[0];
+    if(!currentRunPid){
+      currentRunPid=first.process_id;
+      runningFilename=first.filename;
+      if(runPoll) clearInterval(runPoll);
+      runPoll=setInterval(pollRunOutput,1000);
+    }
+    updateConsoleStatus();
+  }
+}
+initPage();
 
 /* =========== BACKUPS =========== */
 async function loadBackups(){
@@ -1923,18 +2176,22 @@ def login_page():
         log_activity(username, 'auth.login', 'Master login successful')
         return redirect('/')
     users = load_users()
-    if username in users and users[username].get('password') == h and can_user_login(username):
+    ud = users.get(username, {}) if isinstance(users.get(username), dict) else {}
+    password_ok = username in users and ud.get('password') == h
+    if password_ok and not ud.get('banned', False) and can_user_login(username):
         if MASTER_CONFIG.get('maintenance_mode', False):
             return redirect('/maintenance')
         session.permanent = True
         session['logged_in'] = True
         session['username'] = username
+        session['show_welcome'] = True
         register_session(username)
         os.makedirs(get_user_path(username), exist_ok=True)
         log_activity(username, 'auth.login', 'User login successful')
         return redirect('/')
-    log_activity(username or '-', 'auth.login.failed', 'Invalid credentials')
-    return render_template_string(LOGIN_TEMPLATE, error='❌ Invalid credentials')
+    err = get_login_error(username, password_ok)
+    log_activity(username or '-', 'auth.login.failed', err)
+    return render_template_string(LOGIN_TEMPLATE, error=err)
 
 @app.route('/logout')
 def logout():
@@ -1957,13 +2214,19 @@ def get_profile():
                 if os.path.exists(fp):
                     size += os.path.getsize(fp)
     users = load_users()
-    ud = users.get(u, {})
+    ud = users.get(u, {}) if isinstance(users.get(u), dict) else {}
+    is_master = (u == MASTER_USERNAME)
+    show_welcome = session.pop('show_welcome', False)
     return jsonify({
         'username': u,
-        'is_master': u == MASTER_USERNAME,
-        'created': ud.get('created', datetime.now().isoformat()) if isinstance(ud, dict) else datetime.now().isoformat(),
-        'expiry': ud.get('expiry', '∞') if isinstance(ud, dict) else '∞',
-        'disk_usage_gb': size / (1024**3)
+        'is_master': is_master,
+        'vip': ud.get('vip', False) if not is_master else False,
+        'banned': ud.get('banned', False) if not is_master else False,
+        'created': ud.get('created', '') if not is_master else '',
+        'expiry': ud.get('expiry', None) if not is_master else None,
+        'max_sessions': ud.get('max_sessions', 999) if not is_master else 999,
+        'disk_usage_gb': round(size / (1024**3), 3),
+        'show_welcome': show_welcome,
     })
 
 @app.route('/api/system')
@@ -2372,6 +2635,8 @@ def list_panel_users_api():
             'active_sessions': sessions.get(u, 0),
             'expiry': users[u].get('expiry') if isinstance(users[u], dict) else None,
             'created': users[u].get('created') if isinstance(users[u], dict) else None,
+            'vip': users[u].get('vip', False) if isinstance(users[u], dict) else False,
+            'banned': users[u].get('banned', False) if isinstance(users[u], dict) else False,
         }
         for u in users
     ]})
@@ -2385,11 +2650,47 @@ def add_panel_user_api():
         'password': hashlib.sha256(d['password'].encode()).hexdigest(),
         'max_sessions': int(d.get('max_sessions', 999)),
         'created': datetime.now().isoformat(),
-        'expiry': d.get('expiry')
+        'expiry': d.get('expiry'),
+        'vip': bool(d.get('vip', False)),
+        'banned': False,
     }
     save_users(users)
     os.makedirs(os.path.join(USERS_FOLDER, d['username']), exist_ok=True)
     log_activity(session['username'], 'server.user.add', d['username'])
+    return jsonify({'success': True})
+
+@app.route('/api/users/update', methods=['POST'])
+@master_required
+def update_panel_user_api():
+    d = request.json or {}
+    username = d.get('username')
+    users = load_users()
+    if username not in users:
+        return jsonify({'success': False, 'error': 'User not found'}), 404
+    ud = users[username] if isinstance(users[username], dict) else {}
+    if 'vip' in d:
+        ud['vip'] = bool(d['vip'])
+    if 'banned' in d:
+        ud['banned'] = bool(d['banned'])
+    if 'expiry' in d:
+        ud['expiry'] = d['expiry'] or None
+    if 'max_sessions' in d:
+        ud['max_sessions'] = int(d['max_sessions'])
+    if 'new_username' in d and d['new_username'] and d['new_username'] != username:
+        new_u = d['new_username']
+        if new_u in users:
+            return jsonify({'success': False, 'error': 'Username already exists'}), 400
+        users[new_u] = ud
+        del users[username]
+        old_path = os.path.join(USERS_FOLDER, username)
+        new_path = os.path.join(USERS_FOLDER, new_u)
+        if os.path.exists(old_path):
+            os.rename(old_path, new_path)
+        log_activity(session['username'], 'server.user.rename', f'{username} → {new_u}')
+    else:
+        users[username] = ud
+    save_users(users)
+    log_activity(session['username'], 'server.user.update', str(d))
     return jsonify({'success': True})
 
 @app.route('/api/users/delete', methods=['POST'])
