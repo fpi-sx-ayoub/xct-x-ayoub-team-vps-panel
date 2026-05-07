@@ -157,7 +157,9 @@ def load_master_config():
     default_config = {
         'master_username': '@xAyOuB',
         'master_password_hash': hashlib.sha256('@xAyOuB'.encode()).hexdigest(),
-        'port': int(os.environ.get('PORT', 3177))
+        'port': int(os.environ.get('PORT', 3177)),
+        'maintenance_mode': False,
+        'maintenance_message': 'الموقع في صيانة مؤقتة، يرجى المحاولة لاحقاً.'
     }
     if not os.path.exists(MASTER_CONFIG_FILE):
         save_json_file(MASTER_CONFIG_FILE, default_config)
@@ -477,6 +479,49 @@ def master_required(f):
 # =============================================================================
 # 11)  قالب تسجيل الدخول (شكل Pterodactyl/Lunes Host)
 # =============================================================================
+MAINTENANCE_TEMPLATE = r'''
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>صيانة — XcT x TeaM LLC</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Inter','Segoe UI',Tahoma,sans-serif}
+html,body{height:100%;background:#1f2933;color:#d6dde3;display:flex;align-items:center;justify-content:center;min-height:100vh}
+.maint-box{
+  width:min(480px,92vw);background:#2b3a43;border:1px solid #3a4a55;
+  border-radius:10px;padding:40px 32px;text-align:center;
+  box-shadow:0 10px 40px rgba(0,0,0,.5);
+}
+.maint-icon{font-size:54px;margin-bottom:18px}
+.maint-box h1{font-size:22px;font-weight:700;color:#fff;margin-bottom:10px}
+.maint-box .accent{color:#29c7d3}
+.maint-msg{
+  background:#1f2933;border:1px solid #3a4a55;border-radius:8px;
+  padding:18px;margin:20px 0;font-size:15px;color:#c9d6de;line-height:1.7;
+}
+.back-btn{
+  display:inline-block;margin-top:8px;padding:10px 28px;
+  background:#2f6fed;color:#fff;border-radius:5px;font-size:13px;
+  text-decoration:none;font-weight:600;transition:.2s;
+}
+.back-btn:hover{background:#1d5cd8}
+.foot{margin-top:20px;font-size:11px;color:#5a6c78}
+</style>
+</head>
+<body>
+<div class="maint-box">
+  <div class="maint-icon">🛠️</div>
+  <h1>XcT x TeaM<span class="accent">LLC</span></h1>
+  <div class="maint-msg">{{ message }}</div>
+  <a href="/login" class="back-btn">← الرجوع لتسجيل الدخول</a>
+  <div class="foot">Pterodactyl® © 2015 - 2026</div>
+</div>
+</body>
+</html>
+'''
+
 LOGIN_TEMPLATE = r'''
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -486,43 +531,54 @@ LOGIN_TEMPLATE = r'''
 <title>XcT x TeaM LLC — Login</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Inter','Segoe UI',Tahoma,sans-serif}
-html,body{height:100%}
+html,body{height:100%;overflow:hidden}
 body{
-  background:#1f2933;
   color:#d6dde3;display:flex;align-items:center;justify-content:center;min-height:100vh;
+  position:relative;
 }
+/* ---- video background ---- */
+.bg-video{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  object-fit:cover;z-index:0;
+  filter:brightness(0.38) saturate(1.1);
+}
+.bg-overlay{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  background:linear-gradient(135deg,rgba(15,25,35,.7) 0%,rgba(30,50,65,.5) 100%);
+  z-index:1;
+}
+/* ---- card ---- */
 .card{
+  position:relative;z-index:2;
   width:min(420px,92vw);
-  background:#2b3a43;
-  border:1px solid #3a4a55;
-  border-radius:8px;
-  padding:32px 28px;
-  box-shadow:0 10px 40px rgba(0,0,0,.4);
+  background:rgba(30,42,52,.82);
+  border:1px solid rgba(41,199,211,.25);
+  border-radius:10px;
+  padding:34px 30px;
+  box-shadow:0 20px 60px rgba(0,0,0,.6);
+  backdrop-filter:blur(12px);
 }
-.brand{text-align:center;margin-bottom:24px}
-.brand h1{
-  font-size:20px;font-weight:600;color:#fff;margin-bottom:6px;
-}
+.brand{text-align:center;margin-bottom:26px}
+.brand h1{font-size:21px;font-weight:700;color:#fff;margin-bottom:6px;letter-spacing:.5px}
 .brand .accent{color:#29c7d3}
 .brand p{color:#7a8c98;font-size:12px}
-.field{margin-bottom:14px}
+.field{margin-bottom:15px}
 .field label{display:block;color:#9aa9b3;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
 .field input{
   width:100%;padding:11px 14px;
-  background:#1f2933;
+  background:rgba(15,25,35,.7);
   border:1px solid #3a4a55;
-  border-radius:4px;color:#fff;font-size:14px;outline:none;
-  transition:.2s;
+  border-radius:5px;color:#fff;font-size:14px;outline:none;transition:.2s;
 }
-.field input:focus{border-color:#29c7d3;box-shadow:0 0 0 2px rgba(41,199,211,.15)}
+.field input:focus{border-color:#29c7d3;box-shadow:0 0 0 2px rgba(41,199,211,.18)}
 .btn{
-  width:100%;padding:12px;border:0;border-radius:4px;cursor:pointer;
-  background:#2f6fed;color:#fff;font-weight:600;font-size:14px;
-  transition:.2s;margin-top:6px;
+  width:100%;padding:12px;border:0;border-radius:5px;cursor:pointer;
+  background:#2f6fed;color:#fff;font-weight:700;font-size:14px;
+  transition:.2s;margin-top:6px;letter-spacing:.3px;
 }
-.btn:hover{background:#1d5cd8}
+.btn:hover{background:#1d5cd8;transform:translateY(-1px)}
 .error{
-  margin-top:14px;padding:10px;border-radius:4px;
+  margin-top:14px;padding:10px;border-radius:5px;
   background:rgba(229,57,53,.15);
   border:1px solid rgba(229,57,53,.4);
   color:#ff8a8a;text-align:center;font-size:13px;
@@ -531,6 +587,9 @@ body{
 </style>
 </head>
 <body>
+<video class="bg-video" src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663195216670/JYByYKWiHkXkPYxv.mp4"
+  autoplay muted loop playsinline></video>
+<div class="bg-overlay"></div>
 <div class="card">
   <div class="brand">
     <h1>XcT x TeaM<span class="accent">LLC</span></h1>
@@ -539,11 +598,11 @@ body{
   <form method="post" action="/login">
     <div class="field">
       <label>Username</label>
-      <input type="text" name="username" placeholder="Username" required autofocus>
+      <input type="text" name="username" placeholder="Username" required autofocus autocomplete="username">
     </div>
     <div class="field">
       <label>Password</label>
-      <input type="password" name="password" placeholder="Password" required>
+      <input type="password" name="password" placeholder="Password" required autocomplete="current-password">
     </div>
     <button class="btn" type="submit">Login</button>
     {% if error %}<div class="error">{{ error }}</div>{% endif %}
@@ -1176,6 +1235,24 @@ html,body{background:#1f2933;color:#d6dde3;min-height:100vh}
   </div>
 
   <div class="section-card">
+    <div class="section-head">🛠️ وضع الصيانة (MAINTENANCE MODE)</div>
+    <div class="section-body">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+        <span style="color:#9aa9b3;font-size:13px">الحالة:</span>
+        <span id="maint-badge" style="font-size:13px;font-weight:600;padding:4px 12px;border-radius:20px;background:#2a3a2a;color:#65c466">متوقف</span>
+        <button id="maint-toggle-btn" class="btn-action" style="margin:0" onclick="toggleMaintenance()">تفعيل الصيانة</button>
+      </div>
+      <div class="field-block">
+        <label>رسالة الصيانة (تظهر للمستخدمين)</label>
+        <textarea id="maint-msg" rows="3" style="width:100%;background:#1f2933;border:1px solid #3a4a55;border-radius:5px;color:#fff;padding:10px;font-size:13px;resize:vertical"></textarea>
+      </div>
+      <div class="row-end">
+        <button class="btn-action" onclick="saveMaintMsg()">💾 حفظ الرسالة</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-card">
     <div class="section-head">SYSTEM ACTIONS</div>
     <div class="section-body">
       <div class="row-end" style="gap:8px">
@@ -1593,6 +1670,8 @@ async function loadActivity(){
 function escapeHtml(s){ return (s||'').toString().replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 /* =========== SETTINGS =========== */
+let _maintMode = false;
+
 async function loadSettings(){
   try{
     const r=await fetch('/api/system'); const d=await r.json();
@@ -1607,6 +1686,39 @@ async function loadSettings(){
     }
     document.getElementById('primary-host').textContent = (d.hostname||'localhost');
   }catch(e){}
+  if(IS_MASTER) loadMaintenance();
+}
+async function loadMaintenance(){
+  try{
+    const r=await fetch('/api/master/maintenance'); const d=await r.json();
+    _maintMode = d.maintenance_mode;
+    const badge=document.getElementById('maint-badge');
+    const btn=document.getElementById('maint-toggle-btn');
+    const ta=document.getElementById('maint-msg');
+    if(!badge) return;
+    if(_maintMode){
+      badge.textContent='🔴 مفعّل'; badge.style.background='rgba(229,57,53,.2)'; badge.style.color='#ff8a8a';
+      btn.textContent='إيقاف الصيانة'; btn.style.background='#e53935';
+    } else {
+      badge.textContent='🟢 متوقف'; badge.style.background='rgba(101,196,102,.12)'; badge.style.color='#65c466';
+      btn.textContent='تفعيل الصيانة'; btn.style.background='#2f6fed';
+    }
+    if(ta) ta.value = d.maintenance_message || '';
+  }catch(e){}
+}
+async function toggleMaintenance(){
+  _maintMode = !_maintMode;
+  const ta=document.getElementById('maint-msg');
+  const msg = ta ? ta.value.trim() : '';
+  const r=await fetch('/api/master/maintenance',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({maintenance_mode:_maintMode,maintenance_message:msg})});
+  const d=await r.json();
+  if(d.success){ toast(_maintMode?'🔴 وضع الصيانة مفعّل':'🟢 وضع الصيانة متوقف'); loadMaintenance(); }
+  else{ toast('فشل',true); _maintMode=!_maintMode; }
+}
+async function saveMaintMsg(){
+  const ta=document.getElementById('maint-msg'); if(!ta) return;
+  const r=await fetch('/api/master/maintenance',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({maintenance_mode:_maintMode,maintenance_message:ta.value.trim()})});
+  const d=await r.json(); toast(d.success?'✓ تم حفظ الرسالة':'فشل',!d.success);
 }
 async function changeUser(){
   const v=document.getElementById('m-newuser').value.trim(); if(!v) return;
@@ -1812,6 +1924,8 @@ def login_page():
         return redirect('/')
     users = load_users()
     if username in users and users[username].get('password') == h and can_user_login(username):
+        if MASTER_CONFIG.get('maintenance_mode', False):
+            return redirect('/maintenance')
         session.permanent = True
         session['logged_in'] = True
         session['username'] = username
@@ -2435,6 +2549,29 @@ def restart_panel_api():
     log_activity(session['username'], 'server.power.restart', 'Panel restart requested')
     threading.Thread(target=lambda: (time.sleep(1), os.execv(sys.executable, [sys.executable] + sys.argv))).start()
     return jsonify({'success': True})
+
+@app.route('/api/master/maintenance', methods=['GET'])
+@login_required
+def get_maintenance_api():
+    return jsonify({
+        'maintenance_mode': MASTER_CONFIG.get('maintenance_mode', False),
+        'maintenance_message': MASTER_CONFIG.get('maintenance_message', '')
+    })
+
+@app.route('/api/master/maintenance', methods=['POST'])
+@master_required
+def set_maintenance_api():
+    d = request.json or {}
+    MASTER_CONFIG['maintenance_mode'] = bool(d.get('maintenance_mode', False))
+    MASTER_CONFIG['maintenance_message'] = d.get('maintenance_message', MASTER_CONFIG.get('maintenance_message', ''))
+    save_json_file(MASTER_CONFIG_FILE, MASTER_CONFIG)
+    log_activity(session['username'], 'server.maintenance', f"Maintenance: {MASTER_CONFIG['maintenance_mode']}")
+    return jsonify({'success': True})
+
+@app.route('/maintenance')
+def maintenance_page():
+    msg = MASTER_CONFIG.get('maintenance_message', 'الموقع في صيانة مؤقتة.')
+    return render_template_string(MAINTENANCE_TEMPLATE, message=msg)
 
 
 # =============================================================================
