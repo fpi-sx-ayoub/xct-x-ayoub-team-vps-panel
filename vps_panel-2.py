@@ -712,6 +712,36 @@ html,body{background:#1f2933;color:#d6dde3;min-height:100vh}
 .stat-card .val{font-size:14px;color:#fff;font-weight:600}
 .stat-card .val .max{color:#7a8c98;font-weight:400;font-size:12px}
 
+/* ============== CONSOLE STATUS BAR ============== */
+.console-status{
+  display:flex;align-items:center;gap:10px;
+  background:#1a242c;border:1px solid #2a3640;border-radius:4px;
+  padding:9px 14px;margin-bottom:10px;flex-wrap:wrap;
+}
+.cs-badge{
+  padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.5px;
+  flex-shrink:0;
+}
+.cs-badge.running{background:rgba(101,196,102,.15);color:#65c466;border:1px solid rgba(101,196,102,.5)}
+.cs-badge.stopped{background:rgba(90,108,120,.15);color:#9aa9b3;border:1px solid #5a6c78}
+.cs-file{color:#fff;font-size:13px;font-family:monospace;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cs-main-lbl{color:#f6b73c;font-size:11px;white-space:nowrap;flex-shrink:0}
+
+/* ============== FILE ACTION BUTTONS ============== */
+.file-row{cursor:default !important}
+.file-name-click{cursor:pointer;flex:1;color:#d6dde3;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file-name-click:hover{color:#fff}
+.file-actions{display:flex;gap:3px;flex-shrink:0;align-items:center;flex-wrap:wrap}
+.btn-fac{padding:3px 8px;border:0;border-radius:3px;cursor:pointer;font-size:11px;font-weight:700;color:#fff;transition:.15s;white-space:nowrap}
+.btn-fac.f-edit{background:#2f6fed}.btn-fac.f-edit:hover{background:#1d5cd8}
+.btn-fac.f-run{background:#65c466;color:#1f2933}.btn-fac.f-run:hover{background:#4fb350}
+.btn-fac.f-stop{background:#e53935}.btn-fac.f-stop:hover{background:#c62828}
+.btn-fac.f-rename{background:#5a6c78}.btn-fac.f-rename:hover{background:#4a5b66}
+.btn-fac.f-del{background:#e53935}.btn-fac.f-del:hover{background:#c62828}
+.btn-fac.f-main{background:#f6b73c;color:#1a242c}.btn-fac.f-main:hover{background:#e5a828}
+.badge-run{background:rgba(101,196,102,.15);color:#65c466;border:1px solid rgba(101,196,102,.4);border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700;flex-shrink:0}
+.badge-main-f{background:rgba(246,183,60,.12);color:#f6b73c;border:1px solid rgba(246,183,60,.4);border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700;flex-shrink:0}
+
 /* ============== FILES ============== */
 .action-buttons{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
 .btn-bar{
@@ -907,17 +937,27 @@ html,body{background:#1f2933;color:#d6dde3;min-height:100vh}
 
 <!-- ===== CONSOLE TAB ===== -->
 <div class="tab-content active" id="tab-console">
-  <div class="power-row">
-    <button class="btn-power btn-start" onclick="powerAction('start')">Start</button>
-    <button class="btn-power btn-restart" onclick="powerAction('restart')">Restart</button>
-    <button class="btn-power btn-stop" onclick="powerAction('stop')">Stop</button>
+
+  <!-- Status bar -->
+  <div class="console-status">
+    <span class="cs-badge stopped" id="cs-badge">⏹ STOPPED</span>
+    <span class="cs-file" id="cs-file">لا يوجد ملف يعمل حالياً</span>
+    <span class="cs-main-lbl" id="cs-main-lbl">⭐ الرئيسي: لا يوجد</span>
   </div>
 
-  <div class="console-box" id="console-output">Welcome to XcT x HosT Panel\nType a command to begin...\n</div>
+  <div class="power-row">
+    <button class="btn-power btn-start" onclick="powerAction('start')">▶ Start</button>
+    <button class="btn-power btn-restart" onclick="powerAction('restart')">↺ Restart</button>
+    <button class="btn-power btn-stop" onclick="powerAction('stop')">■ Stop</button>
+  </div>
+
+  <div class="console-box" id="console-output">مرحباً بك في XcT x HosT Panel
+قم برفع ملف من تبويب Files ثم اضغط ▶ Run أو حدد ملف رئيسي واضغط Start
+</div>
 
   <div class="cmd-input">
     <span class="prompt">»</span>
-    <input id="cmd-field" placeholder="Type a command..." onkeydown="if(event.key==='Enter') runCmd()">
+    <input id="cmd-field" placeholder="اكتب أمراً..." onkeydown="if(event.key==='Enter') runCmd()">
   </div>
 
   <div class="stats-grid" id="stats-grid">
@@ -1182,26 +1222,7 @@ html,body{background:#1f2933;color:#d6dde3;min-height:100vh}
   </div>
 </div>
 
-<!-- ===== RUN OUTPUT MODAL ===== -->
-<div class="modal" id="run-modal">
-  <div class="modal-box">
-    <div class="modal-head">
-      <h3>Process Output</h3>
-      <button class="close" onclick="closeRun()">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="console-box" id="run-output" style="height:300px"></div>
-      <div class="cmd-input">
-        <span class="prompt">»</span>
-        <input id="run-input" placeholder="Send input..." onkeydown="if(event.key==='Enter') sendRunInput()">
-      </div>
-    </div>
-    <div class="modal-foot">
-      <button class="btn-action danger" onclick="stopRun()">Stop</button>
-      <button class="btn-action gray" onclick="closeRun()">Close</button>
-    </div>
-  </div>
-</div>
+<!-- run modal removed - output goes to main console -->
 
 <script>
 const IS_MASTER = ''' + ('true' if is_master else 'false') + r''';
@@ -1278,23 +1299,68 @@ function updateClock(){
 updateClock();
 setInterval(updateClock, 1000);
 
-/* console output appender */
+/* =========== CONSOLE HELPERS =========== */
+let mainFile = localStorage.getItem('mainFile_'+USER_PATH) || null;
+let runningFilename = null;
+
 function appendConsole(t){
   const c=document.getElementById('console-output');
   c.textContent += t + '\n';
   c.scrollTop = c.scrollHeight;
 }
-
-async function powerAction(a){
-  appendConsole('[*] '+a+' requested...');
-  if(a==='start'){ appendConsole('[+] Server is already running'); }
-  else if(a==='restart'){
-    if(!IS_MASTER){ toast('Master only',true); return; }
-    if(!confirm('Restart panel?')) return;
-    await fetch('/api/master/restart',{method:'POST'});
-    appendConsole('[+] Restarting...');
+function setConsoleText(t){
+  const c=document.getElementById('console-output');
+  c.textContent = t;
+  c.scrollTop = c.scrollHeight;
+}
+function updateConsoleStatus(){
+  const badge=document.getElementById('cs-badge');
+  const fileEl=document.getElementById('cs-file');
+  const mainEl=document.getElementById('cs-main-lbl');
+  if(mainEl) mainEl.textContent = '⭐ الرئيسي: '+(mainFile ? mainFile.split('/').pop() : 'لا يوجد');
+  if(currentRunPid && runningFilename){
+    badge.className='cs-badge running'; badge.textContent='🟢 RUNNING';
+    fileEl.textContent = runningFilename;
+  } else {
+    badge.className='cs-badge stopped'; badge.textContent='⏹ STOPPED';
+    fileEl.textContent = 'لا يوجد ملف يعمل حالياً';
   }
-  else if(a==='stop'){ appendConsole('[!] Stop requires master shell access'); }
+}
+function switchToConsole(){
+  document.querySelectorAll('.tab-item').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(x=>x.classList.remove('active'));
+  const ti = document.querySelector('[data-tab="console"]');
+  if(ti) ti.classList.add('active');
+  const tc = document.getElementById('tab-console');
+  if(tc) tc.classList.add('active');
+}
+
+/* =========== POWER (Start/Stop/Restart) =========== */
+async function powerAction(a){
+  if(a==='start'){
+    if(!mainFile){ toast('حدد ملفاً رئيسياً أولاً من Files ⭐',true); return; }
+    const fname = mainFile.split('/').pop();
+    const fpath = mainFile.substring(0, mainFile.lastIndexOf('/'));
+    await runFileIn(fpath, fname);
+  } else if(a==='restart'){
+    if(currentRunPid){
+      await fetch('/api/file/stop',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({process_id:currentRunPid})});
+      currentRunPid=null; runningFilename=null;
+      if(runPoll){ clearInterval(runPoll); runPoll=null; }
+    }
+    if(!mainFile){ toast('حدد ملفاً رئيسياً أولاً ⭐',true); return; }
+    const fname = mainFile.split('/').pop();
+    const fpath = mainFile.substring(0, mainFile.lastIndexOf('/'));
+    setTimeout(()=>runFileIn(fpath, fname), 600);
+  } else if(a==='stop'){
+    if(!currentRunPid){ toast('لا يوجد عملية تعمل',true); return; }
+    await fetch('/api/file/stop',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({process_id:currentRunPid})});
+    appendConsole('\n[■] تم إيقاف العملية');
+    currentRunPid=null; runningFilename=null;
+    if(runPoll){ clearInterval(runPoll); runPoll=null; }
+    updateConsoleStatus(); loadFiles();
+    toast('تم الإيقاف');
+  }
 }
 
 async function runCmd(){
@@ -1313,32 +1379,54 @@ async function runCmd(){
 /* =========== FILES =========== */
 async function loadFiles(){
   try{
+    const running = await fetch('/api/file/running').then(r=>r.json()).catch(()=>({running:[]}));
+    const runningNames = (running.running||[]).map(x=>x.filename);
     const r=await fetch('/api/files?path='+encodeURIComponent(currentPath));
     const d=await r.json();
     const list=document.getElementById('file-list');
     document.getElementById('breadcrumb').innerHTML = renderCrumb(currentPath);
     list.innerHTML = '';
     if(currentPath !== USER_PATH){
-      list.innerHTML += '<div class="file-row" onclick="goUp()"><span class="ico">⬅</span><span class="name">..</span></div>';
+      list.innerHTML += '<div class="file-row" style="cursor:pointer" onclick="goUp()"><span class="ico">⬅</span><span class="file-name-click">..</span></div>';
     }
     (d.files||[]).forEach(f=>{
       const ico = f.is_dir ? '📁' : '📄';
-      const safe = f.name.replace(/'/g,"\\'");
+      const safe = f.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+      const fp = currentPath+'/'+f.name;
+      const isMain = mainFile === fp;
+      const isRunning = !f.is_dir && runningNames.includes(f.name);
+      const badges = (isMain?'<span class="badge-main-f">⭐ رئيسي</span>':'')+
+                     (isRunning?'<span class="badge-run">🟢 يعمل</span>':'');
+      let actions = '';
+      if(f.is_dir){
+        actions = `<button class="btn-fac f-rename" onclick="event.stopPropagation();renameFile('${safe}')">✏️ تسمية</button>
+                   <button class="btn-fac f-del" onclick="event.stopPropagation();deleteFile('${safe}',true)">🗑 حذف</button>`;
+      } else {
+        const stopBtn = isRunning
+          ? `<button class="btn-fac f-stop" onclick="event.stopPropagation();stopCurrentRun()">■ إيقاف</button>`
+          : `<button class="btn-fac f-run" onclick="event.stopPropagation();runFile('${safe}')">▶ تشغيل</button>`;
+        actions = `
+          <button class="btn-fac f-edit" onclick="event.stopPropagation();openEdit('${safe}')">📝 تعديل</button>
+          ${stopBtn}
+          <button class="btn-fac f-main" onclick="event.stopPropagation();setMainFile('${fp.replace(/'/g,"\\'")}','${safe}')">⭐ رئيسي</button>
+          <button class="btn-fac f-rename" onclick="event.stopPropagation();renameFile('${safe}')">✏️ تسمية</button>
+          <button class="btn-fac f-del" onclick="event.stopPropagation();deleteFile('${safe}',false)">🗑 حذف</button>`;
+      }
       list.innerHTML += `
         <div class="file-row">
-          <span class="chk"></span>
           <span class="ico">${ico}</span>
-          <span class="name" onclick="${f.is_dir?`enterDir('${safe}')`:`openEdit('${safe}')`}">${f.name}</span>
-          <span class="menu" onclick="event.stopPropagation();fileMenu('${safe}',${f.is_dir})">⋯</span>
+          <span class="file-name-click" onclick="${f.is_dir?`enterDir('${safe}')`:`openEdit('${safe}')`}">${escapeHtml(f.name)}</span>
+          ${badges}
+          <div class="file-actions">${actions}</div>
         </div>`;
     });
-  }catch(e){ toast('Failed to load files',true); }
+  }catch(e){ toast('فشل تحميل الملفات',true); }
 }
 function renderCrumb(p){
   const parts = p.split('/').filter(Boolean);
   let acc='';
   let html='<span class="crumb sep">/</span>';
-  parts.forEach((seg,i)=>{
+  parts.forEach((seg)=>{
     acc += '/'+seg;
     html += `<span class="crumb" onclick="navTo('${acc}')">${seg}</span><span class="sep">/</span>`;
   });
@@ -1353,94 +1441,135 @@ function goUp(){
   loadFiles();
 }
 async function createDir(){
-  const n = prompt('Directory name:'); if(!n) return;
+  const n = prompt('اسم المجلد:'); if(!n) return;
   const r=await fetch('/api/files/folder',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path: currentPath+'/'+n})});
-  const d=await r.json(); if(d.success){toast('Created');loadFiles();}else toast('Failed',true);
+  const d=await r.json(); if(d.success){toast('تم الإنشاء');loadFiles();}else toast('فشل: '+(d.error||''),true);
 }
 async function newFile(){
-  const n = prompt('File name (e.g. app.py):'); if(!n) return;
+  const n = prompt('اسم الملف (مثلاً bot.py):'); if(!n) return;
   const r=await fetch('/api/files/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path: currentPath+'/'+n,content:''})});
-  const d=await r.json(); if(d.success){toast('Created');loadFiles();}else toast('Failed',true);
+  const d=await r.json(); if(d.success){toast('تم الإنشاء');loadFiles();}else toast('فشل: '+(d.error||''),true);
 }
 async function uploadFile(inp){
   const f=inp.files[0]; if(!f) return;
+  toast('جاري الرفع وتثبيت المكتبات...');
+  switchToConsole();
+  appendConsole('[↑] جاري رفع الملف: '+f.name+' ...');
   const fd=new FormData(); fd.append('file',f); fd.append('path',currentPath);
   const r=await fetch('/api/files/upload',{method:'POST',body:fd});
-  const d=await r.json(); if(d.success){toast('Uploaded');loadFiles();}else toast('Failed',true);
+  const d=await r.json();
+  if(d.success){
+    appendConsole('[✓] تم رفع الملف: '+f.name);
+    appendConsole('[📦] جاري تثبيت المكتبات تلقائياً...');
+    const ir=await fetch('/api/file/install',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:currentPath,filename:f.name})});
+    const id=await ir.json();
+    if(id.installed && id.installed.length) appendConsole('[✓] تم تثبيت: '+id.installed.join(', '));
+    if(id.failed && id.failed.length) appendConsole('[!] فشل تثبيت: '+id.failed.join(', '));
+    if(!id.installed?.length && !id.failed?.length) appendConsole('[i] لا توجد مكتبات إضافية مطلوبة');
+    toast('تم الرفع بنجاح');
+    loadFiles();
+  } else {
+    appendConsole('[ERR] فشل رفع الملف: '+(d.error||''));
+    toast('فشل الرفع',true);
+  }
   inp.value='';
 }
-async function fileMenu(name, isDir){
-  const a = prompt('Choose action: edit / run / delete / rename', isDir?'delete':'edit');
-  if(!a) return;
+function setMainFile(fp, name){
+  mainFile = fp;
+  localStorage.setItem('mainFile_'+USER_PATH, fp);
+  toast('✓ تم تعيين '+name+' كملف رئيسي');
+  updateConsoleStatus();
+  loadFiles();
+}
+async function renameFile(name){
+  const nn = prompt('الاسم الجديد:', name); if(!nn||nn===name) return;
   const fp = currentPath+'/'+name;
-  if(a==='delete'){
-    if(!confirm('Delete '+name+'?')) return;
-    const r=await fetch('/api/files/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:fp})});
-    const d=await r.json(); if(d.success){toast('Deleted');loadFiles();}else toast('Failed',true);
-  } else if(a==='edit' && !isDir){ openEdit(name); }
-  else if(a==='run' && !isDir){ runFile(name); }
-  else if(a==='rename'){
-    const nn = prompt('New name:', name); if(!nn||nn===name) return;
-    const r=await fetch('/api/exec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({command:`mv "${fp}" "${currentPath}/${nn}"`})});
-    const d=await r.json(); if(d.success){toast('Renamed');loadFiles();}else toast('Failed',true);
-  }
+  const r=await fetch('/api/files/rename',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({old_path:fp,new_name:nn})});
+  const d=await r.json(); if(d.success){toast('تم التسمية');loadFiles();}else toast('فشل',true);
+}
+async function deleteFile(name, isDir){
+  if(!confirm('حذف '+name+'؟')) return;
+  const fp = currentPath+'/'+name;
+  const r=await fetch('/api/files/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:fp})});
+  const d=await r.json(); if(d.success){toast('تم الحذف');loadFiles();}else toast('فشل',true);
 }
 async function openEdit(name){
   const fp = currentPath+'/'+name;
   const r=await fetch('/api/files/content?path='+encodeURIComponent(fp));
   const d=await r.json();
-  if(d.content===undefined){ toast('Cannot read',true); return; }
+  if(d.content===undefined){ toast('لا يمكن قراءة الملف',true); return; }
   currentEditPath = fp;
-  document.getElementById('edit-title').textContent = 'Edit: '+name;
+  document.getElementById('edit-title').textContent = 'تعديل: '+name;
   document.getElementById('edit-content').value = d.content;
   document.getElementById('edit-modal').classList.add('show');
 }
 async function saveEdit(){
   const c = document.getElementById('edit-content').value;
   const r=await fetch('/api/files/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:currentEditPath,content:c})});
-  const d=await r.json(); if(d.success){toast('Saved');closeModal('edit-modal');}else toast('Failed',true);
+  const d=await r.json(); if(d.success){toast('تم الحفظ');closeModal('edit-modal');}else toast('فشل',true);
 }
 function runCurrentFile(){
   if(!currentEditPath) return;
   const name = currentEditPath.split('/').pop();
+  const path = currentEditPath.substring(0, currentEditPath.lastIndexOf('/'));
   closeModal('edit-modal');
-  runFile(name);
+  runFileIn(path, name);
 }
 async function runFile(name){
-  const r=await fetch('/api/file/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:currentPath, filename:name})});
+  await runFileIn(currentPath, name);
+}
+async function runFileIn(path, name){
+  switchToConsole();
+  setConsoleText('[▶] جاري تشغيل: '+name+'\n[📦] تثبيت المكتبات...\n');
+  updateConsoleStatus();
+  const r=await fetch('/api/file/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:path, filename:name})});
   const d=await r.json();
-  if(!d.success){ toast(d.error||'Failed to run',true); return; }
+  if(!d.success){ appendConsole('[ERR] '+( d.error||'فشل التشغيل')); toast('فشل التشغيل',true); return; }
   currentRunPid = d.process_id;
-  document.getElementById('run-output').textContent = '[+] Started '+name+'\n';
-  document.getElementById('run-modal').classList.add('show');
+  runningFilename = name;
+  if(d.installed_result){
+    if(d.installed_result.installed?.length) appendConsole('[✓] مكتبات مثبتة: '+d.installed_result.installed.join(', '));
+    if(d.installed_result.failed?.length) appendConsole('[!] فشل تثبيت: '+d.installed_result.failed.join(', '));
+  }
+  appendConsole('[🟢] تم تشغيل '+name+' (PID: '+currentRunPid+')\n');
   if(runPoll) clearInterval(runPoll);
   runPoll = setInterval(pollRunOutput, 1000);
+  updateConsoleStatus();
+  loadFiles();
 }
 async function pollRunOutput(){
   if(!currentRunPid) return;
-  const r=await fetch('/api/file/output/'+currentRunPid);
-  const d=await r.json();
-  if(d.success){
-    document.getElementById('run-output').textContent = (d.output||[]).join('\n');
-    const c=document.getElementById('run-output'); c.scrollTop=c.scrollHeight;
-    if(!d.is_running){ clearInterval(runPoll); runPoll=null; }
-  }
+  try{
+    const r=await fetch('/api/file/output/'+currentRunPid);
+    const d=await r.json();
+    if(d.success){
+      const c=document.getElementById('console-output');
+      const out=(d.output||[]).join('\n');
+      c.textContent = out;
+      c.scrollTop = c.scrollHeight;
+      if(!d.is_running){
+        clearInterval(runPoll); runPoll=null;
+        appendConsole('\n[■] انتهت العملية');
+        currentRunPid=null; runningFilename=null;
+        updateConsoleStatus(); loadFiles();
+      }
+    }
+  }catch(e){}
 }
-async function sendRunInput(){
-  const f=document.getElementById('run-input'); const v=f.value;
-  if(!v||!currentRunPid) return; f.value='';
-  await fetch('/api/file/input',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({process_id:currentRunPid,input:v})});
-}
-async function stopRun(){
+async function stopCurrentRun(){
   if(!currentRunPid) return;
   await fetch('/api/file/stop',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({process_id:currentRunPid})});
-  toast('Stopped');
-  closeRun();
-}
-function closeRun(){
-  document.getElementById('run-modal').classList.remove('show');
+  appendConsole('\n[■] تم الإيقاف');
+  currentRunPid=null; runningFilename=null;
   if(runPoll){ clearInterval(runPoll); runPoll=null; }
-  currentRunPid=null;
+  updateConsoleStatus(); loadFiles();
+  toast('تم إيقاف العملية');
+}
+async function sendRunInput(){
+  const f=document.getElementById('cmd-field'); const v=f.value.trim();
+  if(!v||!currentRunPid) return; f.value='';
+  appendConsole('» '+v);
+  await fetch('/api/file/input',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({process_id:currentRunPid,input:v})});
 }
 function closeModal(id){ document.getElementById(id).classList.remove('show'); }
 
@@ -1648,6 +1777,7 @@ async function createDB(){
 
 /* init */
 loadFiles();
+updateConsoleStatus();
 </script>
 </body>
 </html>
@@ -1824,6 +1954,39 @@ def create_file_api():
             f.write(d.get('content', ''))
         log_activity(session['username'], 'server.file.create', path)
         return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/files/rename', methods=['POST'])
+@login_required
+def rename_file_api():
+    try:
+        d = request.json or {}
+        old_path = d.get('old_path', '')
+        new_name = d.get('new_name', '')
+        if not old_path or not new_name:
+            return jsonify({'success': False, 'error': 'Missing params'}), 400
+        if not is_path_allowed(session['username'], old_path):
+            return jsonify({'success': False, 'error': 'Forbidden'}), 403
+        new_path = os.path.join(os.path.dirname(old_path), new_name)
+        os.rename(old_path, new_path)
+        log_activity(session['username'], 'server.file.rename', f'{old_path} → {new_path}')
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/file/install', methods=['POST'])
+@login_required
+def install_deps_api():
+    try:
+        d = request.json or {}
+        filepath = os.path.join(d.get('path', ''), d.get('filename', ''))
+        if not os.path.exists(filepath):
+            return jsonify({'success': False, 'error': 'File not found'}), 404
+        if not is_path_allowed(session['username'], d.get('path', '')):
+            return jsonify({'success': False, 'error': 'Forbidden'}), 403
+        result = auto_install_dependencies(filepath)
+        return jsonify({'success': True, 'installed': result.get('installed', []), 'failed': result.get('failed', [])})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
