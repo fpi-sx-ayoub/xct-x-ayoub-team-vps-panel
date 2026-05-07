@@ -1,6 +1,51 @@
 {
   "events": [
     {
+      "id": "eb67eebb",
+      "username": "5",
+      "action": "server.exec",
+      "details": "ngrok http 5000",
+      "ip": "127.0.0.1",
+      "timestamp": "2026-05-07T17:43:32.029752",
+      "time_text": "2026-05-07 17:43:32"
+    },
+    {
+      "id": "a6a19803",
+      "username": "5",
+      "action": "server.exec",
+      "details": "ngrok http 5000",
+      "ip": "127.0.0.1",
+      "timestamp": "2026-05-07T17:43:12.993951",
+      "time_text": "2026-05-07 17:43:12"
+    },
+    {
+      "id": "07d4a15c",
+      "username": "5",
+      "action": "server.exec",
+      "details": "W",
+      "ip": "127.0.0.1",
+      "timestamp": "2026-05-07T17:41:49.137145",
+      "time_text": "2026-05-07 17:41:49"
+    },
+    {
+      "id": "cf508eaa",
+      "username": "5",
+      "action": "auth.login",
+      "details": "User login successful",
+      "ip": "127.0.0.1",
+      "timestamp": "2026-05-07T17:41:09.652762",
+      "time_text": "2026-05-07 17:41:09"
+    },
+    {
+      "id": "1837cd9b",
+      "username": "5",
+      "action": "auth.login",
+      "details": "User login successful",
+      "ip": "127.0.0.1",
+      "timestamp": "2026-05-07T17:41:06.740381",
+      "time_text": "2026-05-07 17:41:06"
+    },
+    {
       "id": "b5085f33",
       "username": "@xAyOuB",
       "action": "auth.login",
