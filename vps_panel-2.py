@@ -605,6 +605,17 @@ html,body{background:#1f2933;color:#d6dde3;min-height:100vh}
   background:linear-gradient(135deg,#f6b73c,#65c466);
   display:inline-block;
 }
+.topbar .clock-btn{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:#2b3a43;border:1px solid #3a4a55;border-radius:6px;
+  padding:4px 10px;cursor:default;min-width:90px;
+}
+.topbar .clock-btn .clock-time{
+  font-size:13px;font-weight:700;color:#29c7d3;font-family:monospace;letter-spacing:1px;
+}
+.topbar .clock-btn .clock-date{
+  font-size:10px;color:#9aa9b3;margin-top:1px;
+}
 
 /* ============== TABS ============== */
 .tabs{
@@ -872,6 +883,10 @@ html,body{background:#1f2933;color:#d6dde3;min-height:100vh}
 <div class="topbar">
   <div class="brand">XcT x HosT<span class="lc">LLC</span></div>
   <div class="icons">
+    <div class="clock-btn" id="topbar-clock">
+      <span class="clock-time" id="clock-time">--:--:--</span>
+      <span class="clock-date" id="clock-date">----/--/--</span>
+    </div>
     <button class="ic" onclick="loadSearch()" title="Search">🔍</button>
     <button class="ic" title="Servers">🗂</button>
     <span class="avatar" title="''' + html.escape(MASTER_USERNAME) + r'''"></span>
@@ -1244,6 +1259,23 @@ async function loadStats(){
 }
 setInterval(loadStats, 4000);
 loadStats();
+
+/* live clock */
+function updateClock(){
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2,'0');
+  const mm = String(now.getMinutes()).padStart(2,'0');
+  const ss = String(now.getSeconds()).padStart(2,'0');
+  const yyyy = now.getFullYear();
+  const mo = String(now.getMonth()+1).padStart(2,'0');
+  const dd = String(now.getDate()).padStart(2,'0');
+  const ct = document.getElementById('clock-time');
+  const cd = document.getElementById('clock-date');
+  if(ct) ct.textContent = hh+':'+mm+':'+ss;
+  if(cd) cd.textContent = yyyy+'/'+mo+'/'+dd;
+}
+updateClock();
+setInterval(updateClock, 1000);
 
 /* console output appender */
 function appendConsole(t){
