@@ -1,6 +1,42 @@
 {
   "events": [
     {
+      "id": "c3c7136d",
+      "username": "5",
+      "action": "server.exec",
+      "details": "npm install -g localtunnel lt --port 5000",
+      "ip": "127.0.0.1",
+      "timestamp": "2026-05-07T17:45:26.923597",
+      "time_text": "2026-05-07 17:45:26"
+    },
+    {
+      "id": "9e628299",
+      "username": "5",
+      "action": "server.exec",
+      "details": "npx localtunnel --port 5000",
+      "ip": "127.0.0.1",
+      "timestamp": "2026-05-07T17:45:20.715143",
+      "time_text": "2026-05-07 17:45:20"
+    },
+    {
+      "id": "dd7d8217",
+      "username": "5",
+      "action": "server.exec",
+      "details": "ngrok version",
+      "ip": "127.0.0.1",
+      "timestamp": "2026-05-07T17:44:32.625489",
+      "time_text": "2026-05-07 17:44:32"
+    },
+    {
+      "id": "09d6e571",
+      "username": "5",
+      "action": "server.exec",
+      "details": "wget https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz tar -xvzf ngrok-v3-stable-linux-amd64.tgz chmo",
+      "ip": "127.0.0.1",
+      "timestamp": "2026-05-07T17:44:27.976398",
+      "time_text": "2026-05-07 17:44:27"
+    },
+    {
       "id": "eb67eebb",
       "username": "5",
       "action": "server.exec",

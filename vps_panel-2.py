@@ -557,7 +557,7 @@ body{
 # =============================================================================
 # 12)  القالب الرئيسي (شكل Pterodactyl / Lunes Host)
 # =============================================================================
-def get_html_template(is_master):
+def get_html_template(is_master, current_username=''):
     master_tabs = ''
     if is_master:
         master_tabs = '''
@@ -986,7 +986,8 @@ html,body{background:#1f2933;color:#d6dde3;min-height:100vh}
     <div class="section-body">
       <div class="field-block"><label>Username</label><input id="u-name" placeholder="username"></div>
       <div class="field-block"><label>Password</label><input id="u-pass" type="password" placeholder="password"></div>
-      <div class="field-block"><label>Max Sessions</label><input id="u-max" type="number" value="3"></div>
+      <div class="field-block"><label>Max Sessions (Devices)</label><input id="u-max" type="number" value="3"></div>
+      <div class="field-block"><label>Expiry Date &amp; Time</label><input id="u-expiry" type="datetime-local"></div>
       <div class="row-end"><button class="btn-action" onclick="addUser()">Add User</button></div>
     </div>
   </div>
@@ -1204,7 +1205,7 @@ html,body{background:#1f2933;color:#d6dde3;min-height:100vh}
 
 <script>
 const IS_MASTER = ''' + ('true' if is_master else 'false') + r''';
-const USER_PATH = ''' + json.dumps(get_user_path(MASTER_USERNAME if is_master else 'user')) + r''';
+const USER_PATH = ''' + json.dumps(get_user_path(MASTER_USERNAME if is_master else current_username)) + r''';
 let currentPath = USER_PATH;
 let currentEditPath = null;
 let currentRunPid = null;
@@ -1513,11 +1514,13 @@ async function loadUsers(){
   const r=await fetch('/api/users/list'); const d=await r.json();
   const list=document.getElementById('user-list'); list.innerHTML='';
   (d.users||[]).forEach(u=>{
+    const expTxt = u.expiry ? '⏰ '+u.expiry.replace('T',' ') : '∞ No expiry';
+    const isExpired = u.expiry && new Date(u.expiry) < new Date();
     list.innerHTML += `
       <div class="user-row">
         <div>
           <div class="uname">${escapeHtml(u.username)}</div>
-          <div class="meta">Sessions: ${u.active_sessions||0}/${u.max_sessions||999}</div>
+          <div class="meta">Sessions: ${u.active_sessions||0}/${u.max_sessions||999} &nbsp;|&nbsp; <span style="color:${isExpired?'#e53935':'#65c466'}">${expTxt}</span></div>
         </div>
         <button class="btn-action danger" onclick="delUser('${escapeHtml(u.username)}')">Delete</button>
       </div>`;
@@ -1527,9 +1530,20 @@ async function addUser(){
   const u=document.getElementById('u-name').value.trim();
   const p=document.getElementById('u-pass').value;
   const m=document.getElementById('u-max').value||3;
+  const ex=document.getElementById('u-expiry').value;
   if(!u||!p){ toast('Fill all fields',true); return; }
-  const r=await fetch('/api/users/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p,max_sessions:m})});
-  const d=await r.json(); if(d.success){toast('User added');loadUsers();}else toast('Failed',true);
+  const body={username:u,password:p,max_sessions:m};
+  if(ex) body.expiry=ex;
+  const r=await fetch('/api/users/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const d=await r.json();
+  if(d.success){
+    toast('User added');
+    document.getElementById('u-name').value='';
+    document.getElementById('u-pass').value='';
+    document.getElementById('u-max').value='3';
+    document.getElementById('u-expiry').value='';
+    loadUsers();
+  }else toast('Failed',true);
 }
 async function delUser(u){
   if(!confirm('Delete user '+u+'?')) return;
@@ -1647,7 +1661,7 @@ loadFiles();
 def index():
     is_master = (session.get('username') == MASTER_USERNAME)
     return render_template_string(
-        get_html_template(is_master),
+        get_html_template(is_master, session.get('username', '')),
         session=session,
         user_path=get_user_path(session['username'])
     )
@@ -1765,34 +1779,53 @@ def list_files_api():
 @app.route('/api/files/upload', methods=['POST'])
 @login_required
 def upload_file_api():
-    f = request.files.get('file')
-    p = request.form.get('path', get_user_path(session['username']))
-    if not f or not is_path_allowed(session['username'], p):
-        return jsonify({'success': False}), 400
-    f.save(os.path.join(p, f.filename))
-    log_activity(session['username'], 'server.file.upload', f.filename)
-    return jsonify({'success': True})
+    try:
+        f = request.files.get('file')
+        p = request.form.get('path', get_user_path(session['username']))
+        if not f:
+            return jsonify({'success': False, 'error': 'No file provided'}), 400
+        if not is_path_allowed(session['username'], p):
+            return jsonify({'success': False, 'error': 'Forbidden'}), 403
+        os.makedirs(p, exist_ok=True)
+        f.save(os.path.join(p, f.filename))
+        log_activity(session['username'], 'server.file.upload', f.filename)
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/files/folder', methods=['POST'])
 @login_required
 def create_folder_api():
-    d = request.json
-    if not is_path_allowed(session['username'], d['path']):
-        return jsonify({'success': False}), 403
-    os.makedirs(d['path'], exist_ok=True)
-    log_activity(session['username'], 'server.file.mkdir', d['path'])
-    return jsonify({'success': True})
+    try:
+        d = request.json or {}
+        path = d.get('path', '')
+        if not path:
+            return jsonify({'success': False, 'error': 'No path provided'}), 400
+        if not is_path_allowed(session['username'], path):
+            return jsonify({'success': False, 'error': 'Forbidden'}), 403
+        os.makedirs(path, exist_ok=True)
+        log_activity(session['username'], 'server.file.mkdir', path)
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/files/create', methods=['POST'])
 @login_required
 def create_file_api():
-    d = request.json
-    if not is_path_allowed(session['username'], d['path']):
-        return jsonify({'success': False}), 403
-    with open(d['path'], 'w', encoding='utf-8') as f:
-        f.write(d.get('content', ''))
-    log_activity(session['username'], 'server.file.create', d['path'])
-    return jsonify({'success': True})
+    try:
+        d = request.json or {}
+        path = d.get('path', '')
+        if not path:
+            return jsonify({'success': False, 'error': 'No path provided'}), 400
+        if not is_path_allowed(session['username'], path):
+            return jsonify({'success': False, 'error': 'Forbidden'}), 403
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write(d.get('content', ''))
+        log_activity(session['username'], 'server.file.create', path)
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/files/delete', methods=['POST'])
 @login_required
@@ -1824,13 +1857,19 @@ def get_file_content():
 @app.route('/api/files/save', methods=['POST'])
 @login_required
 def save_file_api():
-    d = request.json
-    if not is_path_allowed(session['username'], d['path']):
-        return jsonify({'success': False}), 403
-    with open(d['path'], 'w', encoding='utf-8') as f:
-        f.write(d.get('content', ''))
-    log_activity(session['username'], 'server.file.write', d['path'])
-    return jsonify({'success': True})
+    try:
+        d = request.json or {}
+        path = d.get('path', '')
+        if not path:
+            return jsonify({'success': False, 'error': 'No path provided'}), 400
+        if not is_path_allowed(session['username'], path):
+            return jsonify({'success': False, 'error': 'Forbidden'}), 403
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write(d.get('content', ''))
+        log_activity(session['username'], 'server.file.write', path)
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # ----- تشغيل/إيقاف الملفات -----
 @app.route('/api/file/run', methods=['POST'])
@@ -2050,9 +2089,13 @@ def list_panel_users_api():
     users = load_users()
     sessions = load_user_sessions()
     return jsonify({'users': [
-        {'username': u,
-         'max_sessions': users[u].get('max_sessions', 999) if isinstance(users[u], dict) else 999,
-         'active_sessions': sessions.get(u, 0)}
+        {
+            'username': u,
+            'max_sessions': users[u].get('max_sessions', 999) if isinstance(users[u], dict) else 999,
+            'active_sessions': sessions.get(u, 0),
+            'expiry': users[u].get('expiry') if isinstance(users[u], dict) else None,
+            'created': users[u].get('created') if isinstance(users[u], dict) else None,
+        }
         for u in users
     ]})
 
