@@ -1,3 +1,76 @@
 {
-  "events": []
+  "events": [
+    {
+      "id": "b5085f33",
+      "username": "@xAyOuB",
+      "action": "auth.login",
+      "details": "Master login successful",
+      "ip": "127.0.0.1",
+      "timestamp": "2026-05-07T17:36:57.266634",
+      "time_text": "2026-05-07 17:36:57"
+    },
+    {
+      "id": "ef17cb4b",
+      "username": "2",
+      "action": "auth.login",
+      "details": "User login successful",
+      "ip": "127.0.0.1",
+      "timestamp": "2026-05-07T17:35:09.212717",
+      "time_text": "2026-05-07 17:35:09"
+    },
+    {
+      "id": "39326710",
+      "username": "5",
+      "action": "auth.login",
+      "details": "User login successful",
+      "ip": "127.0.0.1",
+      "timestamp": "2026-05-07T17:34:50.183644",
+      "time_text": "2026-05-07 17:34:50"
+    },
+    {
+      "id": "c56d37d2",
+      "username": "@xAyOuB",
+      "action": "server.user.add",
+      "details": "5",
+      "ip": "127.0.0.1",
+      "timestamp": "2026-05-07T17:30:19.125399",
+      "time_text": "2026-05-07 17:30:19"
+    },
+    {
+      "id": "23cd6326",
+      "username": "@xAyOuB",
+      "action": "server.user.delete",
+      "details": "1",
+      "ip": "127.0.0.1",
+      "timestamp": "2026-05-07T17:30:10.716257",
+      "time_text": "2026-05-07 17:30:10"
+    },
+    {
+      "id": "bd4799fb",
+      "username": "@xAyOuB",
+      "action": "server.user.add",
+      "details": "2",
+      "ip": "127.0.0.1",
+      "timestamp": "2026-05-07T17:30:03.425919",
+      "time_text": "2026-05-07 17:30:03"
+    },
+    {
+      "id": "9b349eb4",
+      "username": "@xAyOuB",
+      "action": "server.user.add",
+      "details": "1",
+      "ip": "127.0.0.1",
+      "timestamp": "2026-05-07T17:29:58.799352",
+      "time_text": "2026-05-07 17:29:58"
+    },
+    {
+      "id": "901b6f2a",
+      "username": "@xAyOuB",
+      "action": "auth.login",
+      "details": "Master login successful",
+      "ip": "127.0.0.1",
+      "timestamp": "2026-05-07T17:29:19.576560",
+      "time_text": "2026-05-07 17:29:19"
+    }
+  ]
 }
