@@ -1,6 +1,33 @@
 {
   "events": [
     {
+      "id": "68d9e73f",
+      "username": "@xAyOuB",
+      "action": "server.user.delete",
+      "details": "5",
+      "ip": "127.0.0.1",
+      "timestamp": "2026-05-08T12:39:43.713959",
+      "time_text": "2026-05-08 12:39:43"
+    },
+    {
+      "id": "26287eae",
+      "username": "@xAyOuB",
+      "action": "server.user.delete",
+      "details": "2",
+      "ip": "127.0.0.1",
+      "timestamp": "2026-05-08T12:39:41.762888",
+      "time_text": "2026-05-08 12:39:41"
+    },
+    {
+      "id": "69446c16",
+      "username": "@xAyOuB",
+      "action": "auth.login",
+      "details": "Master login successful",
+      "ip": "127.0.0.1",
+      "timestamp": "2026-05-08T12:39:30.527995",
+      "time_text": "2026-05-08 12:39:30"
+    },
+    {
       "id": "c3c7136d",
       "username": "5",
       "action": "server.exec",
