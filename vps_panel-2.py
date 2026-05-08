@@ -2406,15 +2406,7 @@ def delete_file_api():
     p = d['path']
     if not is_path_allowed(session['username'], p):
         return jsonify({'success': False}), 403
-    try:
-        if os.path.isdir(p):
-            shutil.rmtree(p, ignore_errors=True)
-        elif os.path.isfile(p):
-            os.remove(p)
-        log_activity(session['username'], 'server.file.delete', p)
-        return jsonify({'success': True})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+    return jsonify({'success': False, 'error': 'File deletion is disabled'}), 403
 
 @app.route('/api/files/content')
 @login_required
@@ -2743,36 +2735,6 @@ def delete_panel_user_api():
         log_activity(session['username'], 'server.user.delete', d['username'])
     return jsonify({'success': True})
 
-def cleanup_expired_users():
-    users = load_users()
-    changed = False
-    now = datetime.now()
-    for username, ud in list(users.items()):
-        if not isinstance(ud, dict):
-            continue
-        expiry = ud.get('expiry')
-        if not expiry:
-            continue
-        try:
-            exp_dt = datetime.fromisoformat(expiry)
-        except Exception:
-            continue
-        if exp_dt <= now:
-            users.pop(username, None)
-            changed = True
-    if changed:
-        save_users(users)
-
-def start_cleanup_scheduler():
-    def loop():
-        while True:
-            try:
-                cleanup_expired_users()
-            except Exception:
-                pass
-            time.sleep(3600)
-    threading.Thread(target=loop, daemon=True).start()
-
 # ----- الجدولة -----
 @app.route('/api/schedules/list')
 @login_required
@@ -2807,7 +2769,16 @@ def create_backup_api():
     name = f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.tar.gz"
     try:
         with tarfile.open(os.path.join(BACKUPS_FOLDER, name), 'w:gz') as tar:
-            tar.add(BASE_PATH, arcname='backup')
+            for root, dirs, files in os.walk(BASE_PATH):
+                rel_root = os.path.relpath(root, BASE_PATH)
+                if rel_root == '.':
+                    rel_root = ''
+                for fname in files:
+                    if fname in ('users.json', 'user_sessions.json'):
+                        continue
+                    full = os.path.join(root, fname)
+                    arc = os.path.join('backup', rel_root, fname)
+                    tar.add(full, arcname=arc)
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
     log_activity(session['username'], 'server.backup.create', name)
@@ -2982,8 +2953,6 @@ if __name__ == '__main__':
 
     # شغّل بورتات إضافية إن وُجدت
     start_configured_extra_ports()
-    start_cleanup_scheduler()
-
     port = int(os.environ.get('PORT', MASTER_CONFIG.get('port') or 3177))
     print(f"🌐 Panel: http://0.0.0.0:{port}")
     print(f"   Login: {MASTER_USERNAME} / @xAyOuB (default)")
