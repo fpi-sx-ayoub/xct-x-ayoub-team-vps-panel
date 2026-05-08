@@ -2380,12 +2380,7 @@ def delete_file_api():
     p = d['path']
     if not is_path_allowed(session['username'], p):
         return jsonify({'success': False}), 403
-    if os.path.isdir(p):
-        shutil.rmtree(p, ignore_errors=True)
-    elif os.path.isfile(p):
-        os.remove(p)
-    log_activity(session['username'], 'server.file.delete', p)
-    return jsonify({'success': True})
+    return jsonify({'success': False, 'error': 'File deletion is disabled'}), 403
 
 @app.route('/api/files/content')
 @login_required
@@ -2710,6 +2705,36 @@ def delete_panel_user_api():
         log_activity(session['username'], 'server.user.delete', d['username'])
     return jsonify({'success': True})
 
+def cleanup_expired_users():
+    users = load_users()
+    changed = False
+    now = datetime.now()
+    for username, ud in list(users.items()):
+        if not isinstance(ud, dict):
+            continue
+        expiry = ud.get('expiry')
+        if not expiry:
+            continue
+        try:
+            exp_dt = datetime.fromisoformat(expiry)
+        except Exception:
+            continue
+        if exp_dt <= now:
+            users.pop(username, None)
+            changed = True
+    if changed:
+        save_users(users)
+
+def start_cleanup_scheduler():
+    def loop():
+        while True:
+            try:
+                cleanup_expired_users()
+            except Exception:
+                pass
+            time.sleep(3600)
+    threading.Thread(target=loop, daemon=True).start()
+
 # ----- الجدولة -----
 @app.route('/api/schedules/list')
 @login_required
@@ -2919,6 +2944,7 @@ if __name__ == '__main__':
 
     # شغّل بورتات إضافية إن وُجدت
     start_configured_extra_ports()
+    start_cleanup_scheduler()
 
     port = int(os.environ.get('PORT', MASTER_CONFIG.get('port') or 3177))
     print(f"🌐 Panel: http://0.0.0.0:{port}")
