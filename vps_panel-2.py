@@ -1735,7 +1735,7 @@ async function runFileIn(path, name){
   switchToConsole();
   setConsoleText('[▶] جاري تشغيل: '+name+'\n[📦] تثبيت المكتبات...\n');
   updateConsoleStatus();
-  const r=await fetch('/api/file/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:path, filename:name})});
+    const r=await fetch('/api/file/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:path, filename:name})});
   const d=await r.json();
   if(!d.success){ appendConsole('[ERR] '+( d.error||'فشل التشغيل')); toast('فشل التشغيل',true); return; }
   currentRunPid = d.process_id;
@@ -1744,7 +1744,8 @@ async function runFileIn(path, name){
     if(d.installed_result.installed?.length) appendConsole('[✓] مكتبات مثبتة: '+d.installed_result.installed.join(', '));
     if(d.installed_result.failed?.length) appendConsole('[!] فشل تثبيت: '+d.installed_result.failed.join(', '));
   }
-  appendConsole('[🟢] تم تشغيل '+name+' (PID: '+currentRunPid+')\n');
+  appendConsole('[🟢] تم تشغيل '+name+' (PID: '+currentRunPid+')');
+  if(d.port) appendConsole('[🌐] بورت التشغيل الخاص: '+d.port);
   if(runPoll) clearInterval(runPoll);
   runPoll = setInterval(pollRunOutput, 1000);
   updateConsoleStatus();
@@ -2432,20 +2433,24 @@ def run_file_api():
             return jsonify({'success': False, 'error': 'Main file not found'})
     installed = auto_install_dependencies(filepath)
     cmd = get_run_command(filepath)
+    run_port = get_next_free_port()
     try:
         kwargs = dict(shell=True, cwd=os.path.dirname(filepath),
                       stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                       stderr=subprocess.STDOUT, text=True, bufsize=1)
+        env = os.environ.copy()
+        env['PORT'] = str(run_port)
+        kwargs['env'] = env
         if hasattr(os, 'setsid'):
             kwargs['preexec_fn'] = os.setsid
         p = subprocess.Popen(cmd, **kwargs)
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
     pid = f"{session['username']}_{d.get('filename','f')}_{int(time.time())}"
-    file_processes[pid] = {'process': p, 'filename': d.get('filename',''), 'username': session['username'], 'output': []}
+    file_processes[pid] = {'process': p, 'filename': d.get('filename',''), 'username': session['username'], 'output': [], 'port': run_port}
     threading.Thread(target=read_process_output, args=(pid, p), kwargs={'store': file_processes}, daemon=True).start()
-    log_activity(session['username'], 'server.file.run', f"{d.get('filename','')} ({pid})")
-    return jsonify({'success': True, 'process_id': pid, 'installed_result': installed})
+    log_activity(session['username'], 'server.file.run', f"{d.get('filename','')} ({pid}) on {run_port}")
+    return jsonify({'success': True, 'process_id': pid, 'installed_result': installed, 'port': run_port})
 
 @app.route('/api/file/stop', methods=['POST'])
 @login_required
