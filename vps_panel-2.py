@@ -394,6 +394,31 @@ def get_run_command(filepath):
     }
     return commands.get(ext, f'python3 -u "{filepath}"')
 
+def get_next_free_port(start_port=8000, end_port=9000):
+    used = set()
+    for info in file_processes.values():
+        p = info.get('port')
+        if p:
+            used.add(int(p))
+    for p in load_ports():
+        try:
+            used.add(int(p.get('port')))
+        except Exception:
+            pass
+    for port in range(start_port, end_port + 1):
+        if port in used:
+            continue
+        s = socket.socket()
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            if s.connect_ex(('127.0.0.1', port)) != 0:
+                return port
+        except Exception:
+            return port
+        finally:
+            s.close()
+    return start_port
+
 def read_process_output(proc_id, process, max_lines=2000, store=None):
     store = store if store is not None else file_processes
     output_buffer = deque(maxlen=max_lines)
@@ -2381,7 +2406,15 @@ def delete_file_api():
     p = d['path']
     if not is_path_allowed(session['username'], p):
         return jsonify({'success': False}), 403
-    return jsonify({'success': False, 'error': 'File deletion is disabled'}), 403
+    try:
+        if os.path.isdir(p):
+            shutil.rmtree(p, ignore_errors=True)
+        elif os.path.isfile(p):
+            os.remove(p)
+        log_activity(session['username'], 'server.file.delete', p)
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/files/content')
 @login_required
