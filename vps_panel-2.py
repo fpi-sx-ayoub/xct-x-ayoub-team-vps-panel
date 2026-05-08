@@ -1183,9 +1183,9 @@ html,body{background:#1f2933;color:#d6dde3;min-height:100vh}
         </div>
         <div class="field-block">
           <label>Notes</label>
-          <textarea placeholder="Notes"></textarea>
+          <textarea id="primary-port-note" readonly placeholder="Notes"></textarea>
         </div>
-        <div class="row-end"><button class="btn-action">Primary</button></div>
+        <div class="row-end"><button class="btn-action" id="primary-port-btn">Primary</button></div>
       </div>
     </div>
   </div>
@@ -1475,7 +1475,10 @@ function toast(msg, err){
 async function loadStats(){
   try{
     const r=await fetch('/api/system'); const d=await r.json();
-    document.getElementById('s-addr').innerHTML = (d.hostname||'localhost')+':'+''' + str(MASTER_CONFIG.get('port', 3177)) + r''';
+    const panelPort = d.port || ''' + str(MASTER_CONFIG.get('port', 3177)) + r''';
+    document.getElementById('s-addr').innerHTML = (d.hostname||'localhost')+':'+panelPort;
+    const primaryPortEl = document.getElementById('primary-port');
+    if(primaryPortEl) primaryPortEl.textContent = panelPort;
     const up=Math.floor(d.uptime||0);
     const h=Math.floor(up/3600), m=Math.floor((up%3600)/60), s=up%60;
     document.getElementById('s-uptime').textContent = h+'h '+m+'m '+s+'s';
@@ -1815,7 +1818,7 @@ let _maintMode = false;
 async function loadSettings(){
   try{
     const r=await fetch('/api/system'); const d=await r.json();
-    const port = ''' + str(MASTER_CONFIG.get('port', 3177)) + r''';
+    const port = d.port || ''' + str(MASTER_CONFIG.get('port', 3177)) + r''';
     document.getElementById('sftp-addr').value = 'sftp://'+(d.hostname||'localhost')+':2022';
     document.getElementById('sftp-user').value = ''' + json.dumps(MASTER_USERNAME if is_master else 'user') + r''';
     document.getElementById('dbg-node').value = d.hostname || 'Local Node';
@@ -1825,6 +1828,8 @@ async function loadSettings(){
       const mp=document.getElementById('m-port'); if(mp) mp.value = port;
     }
     document.getElementById('primary-host').textContent = (d.hostname||'localhost');
+    const primaryPortEl = document.getElementById('primary-port');
+    if(primaryPortEl) primaryPortEl.textContent = d.port || port;
   }catch(e){}
   if(IS_MASTER) loadMaintenance();
 }
@@ -2227,6 +2232,7 @@ def get_profile():
         'max_sessions': ud.get('max_sessions', 999) if not is_master else 999,
         'disk_usage_gb': round(size / (1024**3), 3),
         'show_welcome': show_welcome,
+        'port': MASTER_CONFIG.get('port', 3177),
     })
 
 @app.route('/api/system')
@@ -2701,7 +2707,6 @@ def delete_panel_user_api():
     if d['username'] in users:
         del users[d['username']]
         save_users(users)
-        shutil.rmtree(os.path.join(USERS_FOLDER, d['username']), ignore_errors=True)
         log_activity(session['username'], 'server.user.delete', d['username'])
     return jsonify({'success': True})
 
